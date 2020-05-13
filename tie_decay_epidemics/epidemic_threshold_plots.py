@@ -26,6 +26,12 @@ Inputs
 ER-1: an Erdos-Renyi graph with 100 nodes and mean degree 5. There are 1000
 time steps in total. WTD is an exponential distribution with scale = 10.
 
+ER-2: an Erdos-Renyi graph with 100 nodes and mean degree 10. There are 1000
+time steps in total. WTD is an exponential distribution with scale = 10.
+
+ER-3: an Erdos-Renyi graph with 85 nodes and mean degree 2. There are 1000
+time steps in total. WTD is an exponential distribution with scale = 10.
+
 """
 
 params_SI = np.arange(0.01, 1.01, 0.01)
@@ -35,13 +41,15 @@ print ("Running experienments with params_SI = \n{}, \nparams_IS = \n{}"\
                                      .format(params_SI, params_IS))
 
 num_rounds = 10
-num_nodes = 100
+num_nodes = 85
 max_time = 1000
 
-edgelist_withTime = pd.read_csv('../data/ER-1-withTime.csv')
+print ("Experiment on Erdos-Renyi-3.")
+
+edgelist_withTime = pd.read_csv('../data/ER-3-withTime.csv')
 edgelist_withTime = dataframe_to_dict(edgelist_withTime)
 
-edgelist_withoutTime = open("../data/ER-1-withoutTime.csv", "r")
+edgelist_withoutTime = open("../data/ER-3-withoutTime.csv", "r")
 next(edgelist_withoutTime, None)  # skip the first line in the input file
 init_G = nx.parse_edgelist(edgelist_withoutTime,
                       delimiter=',',
@@ -54,6 +62,7 @@ nodes = np.array(range(num_nodes))
 outbreak_size = np.zeros((len(params_SI), len(params_IS)))
 critical_value = np.zeros((len(params_SI), len(params_IS)))
 
+start_time = time.time()
 
 # Perform 10 experiments for each pair of rateSI/rateIS values
 for x in range(len(params_SI)):
@@ -85,6 +94,9 @@ for x in range(len(params_SI)):
         critical_value[x, y] = critical_value_sum/num_rounds
         print ("Outbreak size = {}, critical_value = {}"\
                 .format(outbreak_size[x, y], critical_value[x, y]))
+
+print ("Experiment on Erdos-Renyi-3.")
+print ("Time used: {}".format(time.time()-start_time))
 
 IPython.embed()
 

@@ -57,4 +57,6 @@ def create_ER_graph(graph_name, N, p, t_max, scale):
 
 if __name__ == "__main__":
 
-    create_ER_graph("ER-1", 100, p=0.05, t_max=1000, scale=10)
+    # create_ER_graph("ER-1", 100, p=0.05, t_max=1000, scale=10)
+    create_ER_graph("ER-2", 100, p=0.1, t_max=1000, scale=10)
+    create_ER_graph("ER-3", 100, p=0.02, t_max=1000, scale=10)

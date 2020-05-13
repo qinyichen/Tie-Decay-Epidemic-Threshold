@@ -2,6 +2,7 @@ import os
 import time
 import numpy as np
 import pandas as pd
+import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from tie_decay_epidemics import *
 
@@ -10,7 +11,7 @@ def dataframe_to_dict(edgelist):
     """Turn pandas dataframe to dict for faster query of data.
 
     Note: the conversion is costly.
-    TODO: is there a better way to parse the data? 
+    TODO: is there a better way to parse the data?
 
     Parameters
     ----------
