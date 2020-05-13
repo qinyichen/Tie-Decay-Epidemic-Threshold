@@ -29,6 +29,8 @@ def create_ER_graph(graph_name, N, p, t_max, scale):
     # Make the graph directed
     Gc = Gc.to_directed()
 
+    print ("Number of nodes in largest connected component is", len(Gc.nodes))
+
     # For each edge, assign activities with exponential distribution
     # Activity at edge (i, j) simulates an interaction initiated by agent i
     # towards agent j. This increase the tie strength between i and j.
@@ -55,4 +57,4 @@ def create_ER_graph(graph_name, N, p, t_max, scale):
 
 if __name__ == "__main__":
 
-    create_ER_graph("ER-1", 1000, p=0.02, t_max=1000, scale=10)
+    create_ER_graph("ER-1", 100, p=0.05, t_max=1000, scale=10)

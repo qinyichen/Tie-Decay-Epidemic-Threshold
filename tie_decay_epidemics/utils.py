@@ -9,6 +9,9 @@ from tie_decay_epidemics import *
 def dataframe_to_dict(edgelist):
     """Turn pandas dataframe to dict for faster query of data.
 
+    Note: the conversion is costly.
+    TODO: is there a better way to parse the data? 
+
     Parameters
     ----------
     edgelist : dataframe

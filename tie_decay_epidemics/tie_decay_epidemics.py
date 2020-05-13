@@ -5,10 +5,9 @@ import time
 from scipy.sparse import csr_matrix
 from scipy.linalg import eig
 from numpy import linalg as LA
-from utils import dataframe_to_dict
 import IPython
 
-# TODO: Change the input format of the edgelist to a dataframe
+# TODO: Changed the input format of the edgelist to a dataframe --> Test if it works.
 
 class TieDecay_Graph(object):
     """A tie-decay network with decay coefficient alpha at a particular time.
@@ -74,9 +73,10 @@ class TieDecay_SIS(object):
          Nodes of the tie-decay network.
     infected : 1darray
          Nodes that are initially infected in the tie-decay network.
-    edgelist : dataframe
-         The series of interactions between nodes/agents. The edgelist will
-         be converted to a dict in __init__().
+    edgelist : dict　
+         The series of interactions between nodes/agents. The dict keys are
+         timestamps at which the tie strengths will be updated. The dict values
+         are lists including the interactions to be updated at that time.
     rateSI : float
          The (maximum) rate of infection.
     rateIS : float
@@ -122,7 +122,7 @@ class TieDecay_SIS(object):
         self.reproduction_number = 0
 
         # We convert the edgelist dataframe to a dict to better access the data
-        self.edgelist = dataframe_to_dict(edgelist)
+        self.edgelist = edgelist
 
         # System matrix computations
         self.have_system_matrix = have_system_matrix
@@ -134,9 +134,9 @@ class TieDecay_SIS(object):
                     rateSI*np.where(self.graph.adj>1, 1, self.graph.adj)
             # w = LA.eigvals(self.system_matrix)
             # self.critical_values = [max(abs(w))]
-            w = eig(self.system_matrix)
+            w = eig(self.system_matrix)[0]
             self.critical_values = [max(abs(w))]
-            print("t = {}, critical value is {}".format(self.time, max(abs(w))))
+            # print("t = {}, critical value is {}".format(self.time, max(abs(w))))
 
     def update_graph(self, t):
         """Update the state of the tie-decay network to the current time t.
@@ -179,7 +179,7 @@ class TieDecay_SIS(object):
             # Note: the power should be (# of temporal snapshots)^-1
             critical_value = max(abs(w))**(1/t)
             self.critical_values.append(critical_value)
-            print("t = {}, critical value is {}".format(t, critical_value))
+            # print("t = {}, critical value is {}".format(t, critical_value))
 
 
     def run(self, max_time):
@@ -208,8 +208,8 @@ class TieDecay_SIS(object):
 
             if self.verbose:
                 print("Step {}: Proportion of two types: {:.3f} {:.3f}" \
-                    .format(self.time, self.get_susceptible() / len(self.nodes),
-                        self.get_infected()  / len(self.nodes)))
+                    .format(self.time, self.get_susceptible()/len(self.nodes),
+                        self.get_infected()/len(self.nodes)))
 
         if self.verbose:
             print("Outbreak size: {} out of {}"\
