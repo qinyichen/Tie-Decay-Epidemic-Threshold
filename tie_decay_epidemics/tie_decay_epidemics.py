@@ -1,13 +1,15 @@
 from __future__ import division
 import numpy as np
+import pandas as pd
 import random
 import time
 from scipy.sparse import csr_matrix
-from scipy.linalg import eig
+# from scipy.linalg import eig
+from scipy.sparse.linalg import eigsh
 from numpy import linalg as LA
 import IPython
 
-# TODO: Changed the input format of the edgelist to a dataframe --> Test if it works.
+# TODO: Check whether the adjacency matrix is symmetric at each step.
 
 class TieDecay_Graph(object):
     """A tie-decay network with decay coefficient alpha at a particular time.
@@ -27,6 +29,7 @@ class TieDecay_Graph(object):
     def __init__(self, nodes, time=0, alpha=0.01, init_adj=None):
         self.alpha = alpha
         self.nodes = nodes
+        self.node_idx = {ele:idx for idx, ele in enumerate(self.nodes)}
         self.time = time
 
         # Use the initial adjacency matrix if provided
@@ -36,15 +39,31 @@ class TieDecay_Graph(object):
         else:
             self.adj = init_adj.toarray()
 
-    def get_node_id(self, node):
-        """Returns the index of the particular node."""
-        return np.nonzero(self.nodes == node)[0][0]
 
-    def update_tie_strength(self, src, dst, time, weight=1):
+    def update_time(self, time):
+        """Update the time of the network and perform tie decay accordingly.
+
+        Parameters
+        ----------
+        time : float
+             the new time of the network.
+        """
+
+        # The current time of the graph
+        time_updated_until = self.time
+
+        # Reset the graph time to be the new value
+        self.time = time
+
+        # Update all the existing weights to reflect decay of ties
+        self.adj = self.adj * np.exp(self.alpha * (time_updated_until-time))
+
+
+    def update_tie_strength(self, src, dst, time, weight=1.0):
         """Update the tie strength given an interaction.
 
         Note:
-        (1) Update self.time after all the updates of tie strengths are done
+        (1) Update self.time before all the updates of tie strengths are done
         (2) Graph is undirected---each interaction affects two terms in adj
 
         Parameters
@@ -58,9 +77,10 @@ class TieDecay_Graph(object):
         weight : float
              the amount by which the tie strength will be incremented
         """
-        weight_add = weight*np.exp(self.alpha*(self.time - time))
-        self.adj[self.get_node_id(src), self.get_node_id(dst)] += weight_add
-        self.adj[self.get_node_id(dst), self.get_node_id(src)] += weight_add
+        weight_add = weight * np.exp(self.alpha * (self.time - time))
+
+        self.adj[self.node_idx[src], self.node_idx[dst]] += weight_add
+        self.adj[self.node_idx[dst], self.node_idx[src]] += weight_add
 
 
 class TieDecay_SIS(object):
@@ -73,7 +93,7 @@ class TieDecay_SIS(object):
          Nodes of the tie-decay network.
     infected : 1darray
          Nodes that are initially infected in the tie-decay network.
-    edgelist : dict　
+    edgelist : dict
          The series of interactions between nodes/agents. The dict keys are
          timestamps at which the tie strengths will be updated. The dict values
          are lists including the interactions to be updated at that time.
@@ -90,6 +110,8 @@ class TieDecay_SIS(object):
          A flag indicating whether the system matrix should be computed.
     system_matrix_period : int, optional
          The length of the period in which the system should be computed.
+    have_critical_value_history: bool, optional
+         A flag indicating whether critical values need to be computed at every step.
     verbose : bool, optional
          A flag indicating whether the infection/recovery events will be printed.
     """
@@ -99,6 +121,7 @@ class TieDecay_SIS(object):
                  init_adj=None,
                  have_system_matrix=True,
                  system_matrix_period=0,
+                 have_critical_value_history=False,
                  verbose=True):
 
         self.graph = TieDecay_Graph(nodes, alpha=alpha, init_adj=init_adj)
@@ -111,15 +134,15 @@ class TieDecay_SIS(object):
         self.rateIS = rateIS
 
         # Node idxs that are infected in the beginning
-        self.init_infected = set([self.graph.get_node_id(n) for n in infected])
+        # self.init_infected = set([self.graph.node_idx[node] for node in infected])
 
         # Node idxs that are currently infected/susceptible
-        self.infected = self.init_infected.copy()
+        self.infected = set([self.graph.node_idx[node] for node in infected])
         self.susceptible = set(range(len(nodes))).difference(self.infected)
 
         self.infected_history = [self.get_infected()]
         self.susceptible_history = [self.get_susceptible()]
-        self.reproduction_number = 0
+        # self.reproduction_number = 0
 
         # We convert the edgelist dataframe to a dict to better access the data
         self.edgelist = edgelist
@@ -127,59 +150,63 @@ class TieDecay_SIS(object):
         # System matrix computations
         self.have_system_matrix = have_system_matrix
         self.system_matrix_period = system_matrix_period
+        self.have_critical_value_history = have_critical_value_history
 
         if self.have_system_matrix:
             self.system_matrix = \
                     (1-rateIS)*np.identity(len(self.nodes))+\
                     rateSI*np.where(self.graph.adj>1, 1, self.graph.adj)
-            # w = LA.eigvals(self.system_matrix)
-            # self.critical_values = [max(abs(w))]
-            w = eig(self.system_matrix)[0]
-            self.critical_values = [max(abs(w))]
-            # print("t = {}, critical value is {}".format(self.time, max(abs(w))))
 
-    def update_graph(self, t):
+            if self.have_critical_value_history:
+                self.critical_values = [self.compute_critical_value()]
+                print("t = {}, critical value is {}".format(self.time, self.critical_values[0]))
+
+    def update_graph(self, new_time):
         """Update the state of the tie-decay network to the current time t.
 
         Parameters
         ----------
-        t : float
+        new_time : float
             Read in every interaction in the edgelist till time t. Update the
             attributes of the tie-decay network accordingly.
         """
         time_updated_until = self.graph.time
 
-        # Reset the graph time to be the current time
-        self.graph.time = t
-
-        # Note: CHANGE THE WAY TIE STRENGTH IS DEFINED HERE --- CAP = 1
-        # Also update all the existing weights to reflect decay of ties
-        self.graph.adj = self.graph.adj * \
-                            np.exp(self.graph.alpha * (time_updated_until-t))
+        self.graph.update_time(new_time)
 
         # Add in any new iterations
-        for time in range(time_updated_until+1, t+1):
+        for t in range(time_updated_until+1, new_time+1):
             try:
-                edges = self.edgelist[time]
+                edges = self.edgelist[t]
                 for edge in edges:
                     self.graph.update_tie_strength(edge[0], edge[1], edge[2])
-            except Exception as e:
+            except KeyError:
                 # if no interactions take place at t
                 pass
 
+        # Also make updates related to the epidemic threshold.
         __adj__ = np.where(self.graph.adj>1, 1, self.graph.adj)
 
         # Update the have_system_matrix matrix if needed
-        if self.have_system_matrix and t <= self.system_matrix_period:
-            self.system_matrix = np.matmul(\
-                        ((1-self.rateIS)*np.identity(len(self.nodes))+\
-                        self.rateSI*__adj__), self.system_matrix)
-            w, vl, vr = eig(self.system_matrix, left=True, right=True)
+        if self.have_system_matrix and new_time < self.system_matrix_period:
+            self.system_matrix = \
+                np.matmul(((1-self.rateIS)*np.identity(len(self.nodes))+\
+                            self.rateSI*__adj__), self.system_matrix)
 
-            # Note: the power should be (# of temporal snapshots)^-1
-            critical_value = max(abs(w))**(1/t)
-            self.critical_values.append(critical_value)
-            # print("t = {}, critical value is {}".format(t, critical_value))
+            if self.have_critical_value_history:
+                self.critical_values.append(self.compute_critical_value())
+                print("t = {}, critical value is {}".format(t, self.critical_values[-1]))
+            elif new_time == self.system_matrix_period-1:
+                self.critical_value = self.compute_critical_value()
+
+
+    def compute_critical_value(self):
+        """Compute the critical value of the threshold condition."""
+        max_eig = eigsh(self.system_matrix, k=1, which='LM',
+                        return_eigenvectors=False)[0]
+
+        # Note: the power should be (# of temporal snapshots)^-1
+        return abs(max_eig)**(1/(self.time+1))
 
 
     def run(self, max_time):
@@ -193,7 +220,7 @@ class TieDecay_SIS(object):
         max_time : float
             The maximum time of the SIS process.
         """
-        while len(self.infected) > 0 and self.time <= max_time:
+        while len(self.infected) > 0 and self.time <= max_time-1:
             self.time += 1
             self.update_graph(self.time)
 
@@ -208,12 +235,16 @@ class TieDecay_SIS(object):
 
             if self.verbose:
                 print("Step {}: Proportion of two types: {:.3f} {:.3f}" \
-                    .format(self.time, self.get_susceptible()/len(self.nodes),
-                        self.get_infected()/len(self.nodes)))
+                      .format(self.time, self.get_susceptible()/len(self.nodes),
+                              self.get_infected()/len(self.nodes)))
+
+        # If the epidemic process ceases before reaching T
+        if self.time < self.system_matrix_period-1 and not self.have_critical_value_history:
+            self.critical_value = self.compute_critical_value()
 
         if self.verbose:
             print("Outbreak size: {} out of {}"\
-                  .format(len(self.nodes)-self.get_susceptible()), len(self.nodes))
+                  .format(len(self.nodes)-self.get_susceptible(), len(self.nodes)))
             print("Time of Epidemic Transition: {}".format(self.get_peak_time()))
 
 
@@ -241,11 +272,11 @@ class TieDecay_SIS(object):
 
                 # If the node is directly infected by the source of infection,
                 # increment the basic reproduction number by 1
-                if nbr_idx in self.init_infected:
-                    self.reproduction_number += 1
+                # if nbr_idx in self.init_infected:
+                    # self.reproduction_number += 1
                 if self.verbose:
                     print("Node {} is infected by {}."\
-                        .format(self.nodes[node_idx], self.nodes[nbr_idx]))
+                    .format(self.nodes[node_idx], self.nodes[nbr_idx]))
                 break
 
     def recovery_event(self, node_idx):
