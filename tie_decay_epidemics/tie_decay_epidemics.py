@@ -220,14 +220,19 @@ class TieDecay_SIS(object):
         max_time : float
             The maximum time of the SIS process.
         """
-        while len(self.infected) > 0 and self.time <= max_time-1:
+        # while len(self.infected) > 0 and self.time <= max_time-1:
+        while self.time <= max_time-1:
             self.time += 1
             self.update_graph(self.time)
 
-            for node_idx in self.susceptible.copy():
-                self.infection_event(node_idx)
+            currently_infected = self.infected.copy()
 
-            for node_idx in self.infected.copy():
+            for node_idx in self.susceptible.copy():
+                self.infection_event(node_idx, currently_infected)
+
+            # Note that only agents who are already in infected can be recovered.
+            # The newly infected agents won't go through recovery.
+            for node_idx in currently_infected:
                 self.recovery_event(node_idx)
 
             self.susceptible_history.append(self.get_susceptible())
@@ -248,7 +253,7 @@ class TieDecay_SIS(object):
             print("Time of Epidemic Transition: {}".format(self.get_peak_time()))
 
 
-    def infection_event(self, node_idx):
+    def infection_event(self, node_idx, currently_infected):
         """Infect a node by its rate of infection.
 
         Parameters
@@ -258,7 +263,7 @@ class TieDecay_SIS(object):
         """
         # Obtain its infected neighbor idxs
         nbrs = self.graph.adj[:, node_idx].nonzero()[0]
-        infected_nbrs = self.infected.intersection(set(nbrs))
+        infected_nbrs = currently_infected.intersection(set(nbrs))
 
         # If there are no infected neighbors, no infection event will take place
         if len(infected_nbrs) == 0:

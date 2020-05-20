@@ -3,7 +3,7 @@ import numpy as np
 import csv
 
 
-def create_ER_graph(graph_name, N, p, t_max, scale):
+def create_ER_graph(graph_name, N, p, t_max, scales):
     """Create an Erdos-Renyi graph G(N, p) with an exponential waiting time
     distribution. The graph has N nodes; edges are present with probability p.
     Each edge comes with a series of interactions at time from 0 to t_max.
@@ -23,8 +23,12 @@ def create_ER_graph(graph_name, N, p, t_max, scale):
     """
     G = nx.erdos_renyi_graph(N, p)
 
+    def connected_component_subgraphs(G):
+        for c in nx.connected_components(G):
+            yield G.subgraph(c)
+
     # Take the largest connected component
-    Gc = max(nx.connected_component_subgraphs(G), key=len)
+    Gc = max(connected_component_subgraphs(G), key=len)
 
     # Make the graph directed
     Gc = Gc.to_directed()
@@ -34,18 +38,19 @@ def create_ER_graph(graph_name, N, p, t_max, scale):
     # For each edge, assign activities with exponential distribution
     # Activity at edge (i, j) simulates an interaction initiated by agent i
     # towards agent j. This increase the tie strength between i and j.
-    with open("../data/{}-withTime.csv".format(graph_name), "w") as f:
-        writer = csv.writer(f)
-        writer.writerow(['src', 'dst', 'time'])
-        for edge in Gc.edges:
-            t = 0
-            while t < t_max:
-                t += np.random.exponential(scale=scale)
-                if t <= t_max:
-                    writer.writerow([edge[0], edge[1], t])
-                else:
-                    break
-    f.close()
+    for scale in scales:
+        with open("../data/{}-{}-withTime.csv".format(graph_name, scale), "w") as f:
+            writer = csv.writer(f)
+            writer.writerow(['src', 'dst', 'time'])
+            for edge in Gc.edges:
+                t = 0
+                while t < t_max:
+                    t += np.random.exponential(scale=scale)
+                    if t <= t_max:
+                        writer.writerow([edge[0], edge[1], t])
+                    else:
+                        break
+        f.close()
 
     with open("../data/{}-withoutTime.csv".format(graph_name), "w") as f:
         writer = csv.writer(f)
@@ -57,6 +62,6 @@ def create_ER_graph(graph_name, N, p, t_max, scale):
 
 if __name__ == "__main__":
 
-    # create_ER_graph("ER-1", 100, p=0.05, t_max=1000, scale=10)
-    create_ER_graph("ER-2", 100, p=0.1, t_max=1000, scale=10)
-    create_ER_graph("ER-3", 100, p=0.02, t_max=1000, scale=10)
+    create_ER_graph("ER-1", 100, p=0.10, t_max=1000, scales=[10, 50, 100])
+    create_ER_graph("ER-2", 100, p=0.05, t_max=1000, scales=[10, 50, 100])
+    create_ER_graph("ER-3", 100, p=0.02, t_max=1000, scales=[10, 50, 100])
