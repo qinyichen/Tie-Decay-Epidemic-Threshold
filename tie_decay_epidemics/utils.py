@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import seaborn as sns
 from tie_decay_epidemics import *
 
 
@@ -90,7 +91,7 @@ def plot_critical_value_history(SIS, prefix, dirpath="../plots"):
     plt.close()
 
 
-def plot_outbreak_size(fig_name, outbreak_size, params_SI, params_IS):
+def plot_outbreak_size(fig_name, outbreak_size, params_SI, params_IS, vmax=100):
     """Plot the outbreak sizes that correspond to different rates of infection
        and rates of recovery.
 
@@ -112,8 +113,9 @@ def plot_outbreak_size(fig_name, outbreak_size, params_SI, params_IS):
                                     columns=np.round(params_IS, 2))
     ax = sns.heatmap(outbreak_size_df,
                      vmin=0,
-                     vmax=len(nodes),
-                     cmap='Blues')
+                     vmax=vmax,
+                     cmap='Blues',
+                     annot=True)
     plt.xlabel('rate of recovery', fontsize=16)
     plt.ylabel('rate of infection', fontsize=16)
     plt.savefig('../plots/{}-outbreak-size.png'.format(fig_name), bbox_inches="tight")
@@ -143,7 +145,8 @@ def plot_critical_value(fig_name, critical_value, params_SI, params_IS):
     ax = sns.heatmap(critical_value_df,
                      vmin=0,
                      vmax=math.ceil(np.max(critical_value)),
-                     cmap='Greens')
+                     cmap='Greens',
+                     annot=True)
     plt.xlabel('rate of recovery', fontsize=16)
     plt.ylabel('rate of infection', fontsize=16)
     plt.savefig('../plots/{}-critical-value.png'.format(fig_name), bbox_inches="tight")

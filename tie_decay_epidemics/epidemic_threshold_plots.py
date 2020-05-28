@@ -1,16 +1,15 @@
 from tie_decay_epidemics import *
 from utils import *
-from math import *
 
-import pandas as pd
+from math import *
 import numpy as np
 import networkx as nx
-import seaborn as sns
+import pandas as pd
+from numpy import linalg as LA
 import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from matplotlib.ticker import FormatStrFormatter
-from numpy import linalg as LA
 
 import time
 import IPython
@@ -35,9 +34,11 @@ time steps in total. WTD is an exponential distribution with scale = 100.
 
 """
 
-graph_idx = 3
+graph_idx = 1
 graph_scale = 100
-decay_coeff = 0.1
+decay_coeff = 1e-1
+
+fig_name = "ER-{}-{}-{}".format(graph_idx, graph_scale, decay_coeff)
 
 params_SI = np.arange(0.05, 1.01, 0.05)
 params_IS = np.arange(0.05, 1.01, 0.05)
@@ -106,28 +107,3 @@ print ("Experiment on Erdos-Renyi-{}, with alpha={}, scale = {}."\
 print ("Time used: {}".format(time.time()-start_time))
 
 IPython.embed()
-
-
-# def plot_outbreak_size(fig_name, outbreak_size, params_SI, params_IS):
-#     plt.figure()
-#     outbreak_size_copy = outbreak_size + 1;
-#     fig, ax = plt.subplots(figsize=(15,10))
-#     log_norm = LogNorm(vmin=outbreak_size_copy.min().min(), vmax=outbreak_size_copy.max().max())
-#     cbar_ticks = [
-#         pow(10, i) for i in range(floor(log10(outbreak_size_copy.min().min())),\
-#                                   ceil(log10(outbreak_size_copy.max().max())))
-#     ]
-#     outbreak_size_df = pd.DataFrame(outbreak_size_copy,
-#                                     index=np.round(params_SI, 2),
-#                                     columns=np.round(params_IS,2))
-#     ax = sns.heatmap(outbreak_size_df,
-#                      norm=log_norm,
-#                      cbar_kws={"ticks": cbar_ticks},
-#                      annot=False,
-#                      annot_kws={"size": 16},
-#                      cmap='Blues',
-#                      fmt='g')
-#     plt.xlabel('rate of recovery', fontsize=16)
-#     plt.ylabel('rate of infection', fontsize=16)
-#     plt.savefig('../plots/{}-outbreak-size.png'.format(fig_name), bbox_inches="tight")
-#     plt.close()
