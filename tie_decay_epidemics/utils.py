@@ -65,7 +65,7 @@ def plot(SIS, prefix, dirpath="../plots"):
     plt.close()
 
 
-def plot_critical_value_history(SIS, prefix, dirpath="../plots"):
+def plot_critical_value_history(SIS, fig_name, dirpath="../plots"):
     """Plot the evolution of the critical values (i.e., how dominant eigenvalue
        of the system matrix changes over time).
 
@@ -79,15 +79,13 @@ def plot_critical_value_history(SIS, prefix, dirpath="../plots"):
          Directory where the plot is saved.
     """
     len = min(SIS.system_matrix_period, SIS.time)
-
     plt.figure()
-    plt.plot(range(len+1), SIS.critical_values, label="Critical Value", color="g")
-    plt.plot(range(len+1), np.ones(len+1), label="Threshold", color="r")
-    plt.title('{}\nrateSI={}, rateIR={}'.format(prefix, SIS.rateSI, SIS.rateIS))
-    plt.xlabel('Length of Period $T$', fontsize=14)
-    plt.ylabel('Critical Value', fontsize=14)
+    plt.plot(range(len), SIS.critical_values, label="critical value", color="orange")
+    plt.plot(range(len), np.ones(len), linestyle='--', label="threshold", color="r")
+    plt.xlabel('length of period', fontsize=14)
+    plt.ylabel('critical value', fontsize=14)
     plt.legend()
-    plt.savefig("{}/{}-critical-values.png".format(dirpath, prefix))
+    plt.savefig("{}/{}-critical-value-history-paper.png".format(dirpath, fig_name))
     plt.close()
 
 
@@ -144,10 +142,30 @@ def plot_critical_value(fig_name, critical_value, params_SI, params_IS):
                                      columns=np.round(params_IS, 2))
     ax = sns.heatmap(critical_value_df,
                      vmin=0,
-                     vmax=math.ceil(np.max(critical_value)),
+                     vmax=5,
                      cmap='Greens',
-                     annot=True)
+                     annot=False)
     plt.xlabel('rate of recovery', fontsize=16)
     plt.ylabel('rate of infection', fontsize=16)
     plt.savefig('../plots/{}-critical-value.png'.format(fig_name), bbox_inches="tight")
+    plt.close()
+
+def plot_scatter(fig_name, outbreak_size, critical_value):
+    """Plot a scatter plot of final outbreak sizes vs critcal values.
+
+    Parameters
+    ----------
+    fig_name : str
+         Name of the plot.
+    outbreak_size : 2darray
+         The matrix of outbreak sizes.
+    critical_value : 2darray
+         The matrix of critical values.
+    """
+    plt.figure()
+    plt.scatter(outbreak_size, critical_value)
+    plt.xlabel('outbreak size', fontsize=16)
+    plt.ylabel('critical value', fontsize=16)
+    plt.hlines(1.0, 0, 100, linestyle="dashed", color="maroon", linewidth=2)
+    plt.savefig('../plots/{}-scatter-plot.png'.format(fig_name), bbox_inches="tight")
     plt.close()
