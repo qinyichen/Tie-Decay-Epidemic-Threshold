@@ -1,4 +1,4 @@
-# Tie-Decay-Epidemic-Threshold
+# tie-decay-epidemic-threshold
 
 This repository includes Python code used for the numerical experiments in the following paper:
 
